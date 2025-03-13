@@ -84,7 +84,7 @@ def get_sentiment(text, ollama_url="http://localhost:11434/api/generate"):
         "stream": False
     }
 
-    max_retries = 3
+    max_retries = 5
     for attempt in range(max_retries):
         
         try:
@@ -195,12 +195,12 @@ def analyze_comments(df, sample_size=None):
         print(f"{emoji} Raw sentiment: {clean_sent}, Category: {category}")
 
         # Be nice to the API with a small delay
-        time.sleep(1)
+        time.sleep(0.3)
         print("==============\n")
 
     return results
 
-def create_sentiment_visualizations(sentiment_data, output_html="sentiment_analysis.html"):
+def create_sentiment_visualizations(sentiment_data, output_html="sentiment_analysis3.html"):
     """Create Bokeh visualizations for sentiment analysis with predefined categories."""
     # Convert to DataFrame
     df_results = pd.DataFrame(sentiment_data)
