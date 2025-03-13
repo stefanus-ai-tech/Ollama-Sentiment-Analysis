@@ -10,6 +10,30 @@ import time
 import re
 import random
 
+# Define emojis for each sentiment category
+SENTIMENT_EMOJIS = {
+    "very positive": "😃",
+    "positive": "🙂",
+    "slightly positive": "😐",
+    "neutral": "😶",
+    "factual": "ℹ️",
+    "mixed": "😕",
+    "slightly negative": "🙁",
+    "negative": "😞",
+    "very negative": "😠",
+    "angry": "😡",
+    "sad": "😢",
+    "anxious": "😟",
+    "surprised": "😲",
+    "confused": "😕",
+    "amused": "😄",
+    "excited": "🤩",
+    "bored": "😴",
+    "inspired": "💡",
+    "thoughtful": "🤔"
+}
+
+
 # Predefined sentiment categories with descriptions
 SENTIMENT_CATEGORIES = {
     # Positive sentiments
@@ -51,25 +75,42 @@ def load_comments(file_path):
     return df
 
 def get_sentiment(text, ollama_url="http://localhost:11434/api/generate"):
-    """Get sentiment from Ollama API."""
+    """Get sentiment from Ollama API with retry mechanism."""
     prompt = f"do only three word sentiment analysis to this sentence without any explanation. pure three words\n\n{text}"
-    
+
     payload = {
         "model": "phi4-mini:latest",
         "prompt": prompt,
         "stream": False
     }
-    
-    try:
-        response = requests.post(ollama_url, json=payload)
-        response.raise_for_status()
-        result = response.json()
-        # Extract just the three words
-        sentiment_words = result['response'].strip().split()[:3]
-        return " ".join(sentiment_words)
-    except requests.exceptions.RequestException as e:
-        print(f"Error calling Ollama API: {e}")
-        return "API error"
+
+    max_retries = 3
+    for attempt in range(max_retries):
+        
+        try:
+            response = requests.post(ollama_url, json=payload, timeout=10)
+            response.raise_for_status()
+            result = response.json()
+            # Extract just the three words
+            sentiment_words = result['response'].strip().split()[:3]
+            if sentiment_words:  # Check if we got a non-empty response
+                print(f"Attempt {attempt + 1}: Successful response from API.\n")
+                return " ".join(sentiment_words)
+            else:
+                print(f"Attempt {attempt + 1}: Empty response from API.\n")
+        except requests.exceptions.RequestException as e:
+            print(f"Attempt {attempt + 1}: Error calling Ollama API: {e}\n")
+        except requests.exceptions.Timeout:
+            print(f"Attempt {attempt+1}: API request timed out.\n")
+
+        if attempt < max_retries - 1:
+            print(f"Retrying in {2 ** attempt} seconds...\n")
+            
+            time.sleep(2 ** attempt)  # Exponential backoff
+        print("==============\n")
+
+    print("==============\n")
+    return "API error or empty response after multiple retries"
 
 def clean_sentiment(sentiment):
     """Clean up sentiment text to standardize responses."""
@@ -132,7 +173,8 @@ def analyze_comments(df, sample_size=None):
     
     for i, row in df_sample.iterrows():
         comment = row['content']
-        print(f"Analyzing comment {i+1}/{len(df_sample)}: {comment[:50]}...")
+        print("==============")
+        print(f"Analyzing comment {i+1}/{len(df_sample)}: {comment[:50]}...\n")
         
         sentiment = get_sentiment(comment)
         clean_sent = clean_sentiment(sentiment)
@@ -146,10 +188,16 @@ def analyze_comments(df, sample_size=None):
             'likes': int(row.get('likes', 0)),
             'publish_date': row.get('published', '')
         })
-        
+
+        # Get the emoji for the category
+        emoji = SENTIMENT_EMOJIS.get(category, "⚪")  # Default to a white circle if not found
+
+        print(f"{emoji} Raw sentiment: {clean_sent}, Category: {category}")
+
         # Be nice to the API with a small delay
-        time.sleep(0.5)
-    
+        time.sleep(1)
+        print("==============\n")
+
     return results
 
 def create_sentiment_visualizations(sentiment_data, output_html="sentiment_analysis.html"):
