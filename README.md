@@ -1,3 +1,7 @@
+# Flowchart
+
+![flowchart](Flowchart.svg)
+
 # YouTube Comment Sentiment Analysis
 
 This project analyzes the sentiment of YouTube comments using a local Large Language Model (LLM) served by [Ollama](https://ollama.com/). It retrieves comments from a CSV file, sends them to a locally running Ollama instance for sentiment analysis, and visualizes the results.
